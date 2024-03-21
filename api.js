@@ -32,3 +32,29 @@ router.post('/add-list', async (req, res) => {
         res.json({ error: error });
     }
 });
+// Thêm sản phẩm
+router.post('/add-list', async (req, res) => {
+    try {
+      const { image,
+        name,
+        price,
+        quantity,
+        describe} = req.body;
+  
+      // Tạo một instance mới của model sản phẩm
+      const newSanPham = new server.fdModel({
+        image,
+        name,
+        price,
+        quantity,
+        describe
+      });
+  
+      // Lưu sản phẩm mới vào cơ sở dữ liệu
+      const savedSanPham = await newSanPham.save();
+  
+      res.status(201).json(savedSanPham); // Trả về sản phẩm vừa được tạo thành công
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
