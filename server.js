@@ -1,137 +1,88 @@
 const express = require('express');
-
-const app = express();
-
-const port = 3000;
-
-const bodyParser = require("body-parser");
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-
-app.listen(port, () => {
-    console.log(`Server dang chay cong ${port}`)
-})
-
-const api = require('./api');
-app.use ('/api', api);
+const mongoose = require('mongoose');
 
 const uri = 'mongodb+srv://admin:admin@cluster0.jcetqj6.mongodb.net/ASM'
 
-const fdModel = require('./foodModel');
-const mongoose = require('mongoose');
+const app = express();
+const spModel = require('./sanphamModel');
+app.use(express.json());
 
-//Kết nối mongodb
+// day danh sach len
+app.listen(3000, () => {
+    console.log("Server chay cong 3000");
+})
+mongoose.connect(uri).then(() => console.log("Connect thanh cong"))
 
-app.get('/', async (req, res)=>{
-    await mongoose.connect(uri);
-    let foods = await fdModel.find();
-    console.log(foods);
-    res.send(foods);
+app.get('/list', async (req, res) => {
+    let sanphams = await spModel.find();
+    console.log(sanphams);
+    res.send(sanphams)
 })
 
-app.post('/add-list', async (req, res) => {
-    await mongoose.connect(uri);
+app.post('/list/add', async (req, res) => {
     try {
-        let item = req.body;
-        let food = await fdModel.create(item);
-        res.send(food);
-        console.log(food);
+        const spdata = req.body; // lay du lieu fruit tu yeu cau body
+        const newSP = await spModel.create(spdata);
+        console.log(newSP);
+        const sanphams = await spModel.find();
+        res.send(sanphams)
     } catch (error) {
-        console.error(error);
-        res.json({ error: error });
+        res.status(500).send(error);
     }
-});
+})
+app.put('/list/:id', async (req, res) => {
+    try {
+        const sanphams = await spModel.findById(req.params.id);
+        await sanphams.updateOne({ '$set': req.body });
+        res.status(200).json("Sua thanh cong")
+    } catch (error) {
+        res.status(500).json(err)
+    }
+})
+app.delete('/list/:id', async (req, res) => {
+    try {
+        const spId = req.params.id;
+        console.log(spId);
+        const deleteSP = await spModel.findByIdAndDelete(spId);
+        await deleteSP.deleteOne({ '$set': req.body });
+        res.status(200).json("Xoa thanh cong")
+    } catch (error) {
+        res.status(500).json(err)
+    }
+})
 
-exports.fdModel = fdModel;
-exports.uri = uri;
-exports.mongoose = mongoose;
+// upload anh
+const upload = require('./upload');
+app.post("/addImage", upload.array("image", 5), async (req, res) => {
+    try {
 
-// const express = require("express");
-
-// const app = express();
-
-// const port = 3000;
-
-// const bodyParser = require("body-parser");
-// app.use(bodyParser.json());
-// app.use(bodyParser.urlencoded({ extended: true }));
-
-// app.listen(port, () => {
-//   console.log(`Server dang chay cong ${port}`);
-// });
-
-// const api = require("./api");
-// app.use("/api", api);
-
-
-// const uri = 'mongodb+srv://admin:admin@cluster0.jcetqj6.mongodb.net/ASM'
-
-// const fdModel = require("./foodModel");
-// const mongoose = require("mongoose");
-
-// app.get("/", async (req, res) => {
-//   await mongoose.connect(uri);
-
-//   let sanphams = await fdModel.find();
-
-//   console.log(sanphams);
-
-//   res.send(sanphams);
-// });
-
-// app.post("/add_sp", async (req, res) => {
-//   await mongoose.connect(uri);
-
-//   // let sanpham = {
-//   //     ten: 'Sanpham 4',
-//   //     gia: 500,
-//   //     soluong: 10,
-//   //     tonkho: false
-//   // }
-
-//   let sanpham = req.body;
-
-//   let kq = await fdModel.create(sanpham);
-
-//   console.log(kq);
-
-//   let sanphams = await fdModel.find();
-
-//   res.send(sanphams);
-// });
-
-// app.get("/xoa/:id", async (req, res) => {
-//   await mongoose.connect(uri);
-
-//   let id = req.params.id;
-//   let kq = await fdModel.deleteOne({ _id: id });
-
-//   console.log(kq);
-
-//   res.redirect("../");
-// });
-
-// app.get("/update/:id", async (req, res) => {
-//   await mongoose.connect(uri);
-
-//   console.log("Ket noi DB thanh cong");
-
-//   let id = req.params.id;
-
-//   let tenSPMoi = "San pham phien ban moi 2024";
-
-//   await fdModel.updateOne({ _id: id }, { ten: tenSPMoi });
-
-//   let sanphams = await spModel.find({});
-
-//   res.send(sanphams);
-// });
-
-// module.exports = app;
-// exports.uri = uri;
-// exports.mongoose = mongoose;
-// exports.fdModel = fdModel;
-
-
-
+        const data = req.body;
+        const files = req.files;
+        const urlsImage = files.map((file) => `${req.protocol}://${req.get("host")}/uploads/${file.filename}`);
+        const newFruit = new FruitModel({
+            name: data.name,
+            quantity: data.quantity,
+            price: data.price,
+            status: data.status,
+            image: urlsImage,
+            description: data.description,
+            id_distributor: data.id_distributor,
+        })
+        const result = await newFruit.save();
+        if (result) {
+            res.json({
+                "status": 200,
+                "messenger": "Them thanh cong",
+                "data": result
+            })
+        } else {
+            res.json({
+                "status": 400,
+                "messenger": "Them that bai",
+                "data": []
+            })
+        }
+    } catch (error) {
+        console.log(error);
+    }
+})
